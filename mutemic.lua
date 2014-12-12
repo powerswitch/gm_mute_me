@@ -1,10 +1,7 @@
-print(GAMEMODE_NAME)
-
 local DEFAULT_IP = "127.0.0.1"
 local DEFAULT_PORT = 8264
 
---TODO: GAMEMODE
---TODO: AddCSLuaFile for dll?
+--TODO: Check if gamemode is terrortown (how to do that?)
 
 if (SERVER) then
     util.AddNetworkString("MuteMicKilled");
@@ -22,7 +19,7 @@ elseif (CLIENT) then
     local mutedPanel;
     local TTT = "unknown";
     
-    local init, connect, applyState, createMutedGui, writeline, callbackConnect, callbackDisconnect;
+    local init, connect, reconnect, applyState, createMutedGui, writeline, callbackConnect, callbackDisconnect, ipPortChanged;
     
     print("MuteMic: Initializing ...");
 
@@ -39,6 +36,11 @@ elseif (CLIENT) then
         local ip = GetConVarString("mutemic_ip");
         local port = GetConVarNumber("mutemic_port");
         socket:Connect(ip, port);
+    end;
+    
+    reconnect = function()
+        socket:Disconnect();
+        connect();
     end;
 
     applyState = function(newState)
@@ -131,7 +133,7 @@ elseif (CLIENT) then
             applyState("SPEAK");
         end
     end);
-    
+
     net.Receive("MuteMicKilled", function()
         print("MuteMic: Got MuteMicKilled from server");
         if (!enabled or spectator or TTT == "PrepareRound" or TTT == "EndRound" or TTT == "unknown") then
@@ -168,10 +170,7 @@ elseif (CLIENT) then
             applyState("SPEAK");
             enabled = false;
         elseif (args[1] == "reconnect") then
-            pcall(function()
-                socket:Disconnect();
-                connect();
-            end);
+            pcall(reconnect);
         else
             print("Usage:");
             print("  "..command.." [status|mute|unmute|enable|disable|reconnect]");
@@ -196,5 +195,13 @@ elseif (CLIENT) then
 
     CreateClientConVar("mutemic_ip", DEFAULT_IP, true, false)
     CreateClientConVar("mutemic_port", DEFAULT_PORT, true, false)
+    ipPortChanged = function(convar_name, value_old, value_new)
+        if (value_old ~= value_new) then
+            pcall(reconnect);
+        end
+    end;
+    cvars.AddChangeCallback("mutemic_ip", ipPortChanged)
+    cvars.AddChangeCallback("mutemic_port", ipPortChanged)
+
     pcall(init);
 end
