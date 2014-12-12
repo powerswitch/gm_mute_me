@@ -1,27 +1,22 @@
 print(GAMEMODE_NAME)
 
-local IP = "127.0.0.1"
-local PORT = 8264
+local DEFAULT_IP = "127.0.0.1"
+local DEFAULT_PORT = 8264
 
 --TODO: GAMEMODE
 --TODO: AddCSLuaFile for dll?
---FIXME: Beim abwesenheits specatoring wird man auch gemutet
 
 if (SERVER) then
     util.AddNetworkString("MuteMicKilled");
-    hook.Add("PlayerDeath", "MuteMicKilled", function( victim, weapon, killer )
+    hook.Add("PlayerDeath", "MuteMic_PlayerDeath", function( victim, weapon, killer )
         net.Start("MuteMicKilled");
         net.Send(victim);
-    end)
-    util.AddNetworkString("MuteMicSpectator");
-    hook.Add("PlayerDeath", "MuteMicSpectator", function( player )
-        net.Start("MuteMicSpectator");
-        net.Send(player);
     end)
 elseif (CLIENT) then
     local socket;
     local connected = false;
     local enabled = true;
+    local spectator = false;
     local initialChatMessage = true;
     local state = "SPEAK";
     local mutedPanel;
@@ -41,11 +36,13 @@ elseif (CLIENT) then
     
     connect = function()
         print("MuteMic: Connecting ...");
-        socket:Connect(IP, PORT);
+        local ip = GetConVarString("mutemic_ip");
+        local port = GetConVarNumber("mutemic_port");
+        socket:Connect(ip, port);
     end;
 
     applyState = function(newState)
-        if (newState ~= state and enabled) then
+        if (newState ~= state) then
             state = newState;
             if (!mutedPanel) then
                 createMutedGui();
@@ -105,21 +102,6 @@ elseif (CLIENT) then
         connected = false;
     end;
     
-    /* hook.Add("PlayerDeath", "MuteMic_PlayerDeath", function (victim, inflictor, attacker)
-     *     print("MuteMic: PlayerDeath");
-     *     if (player == LocalPlayer()) then
-     *         applyState("MUTE");
-     *     end
-     * end)
-     *
-     * hook.Add("PlayerSilentDeath", "MuteMic_PlayerSilentDeath", function (victim, inflictor, attacker)
-     *     print("MuteMic: PlayerSilentDeath");
-     *     if (player == LocalPlayer()) then
-     *         applyState("MUTE");
-     *     end
-     * end)
-     */
-
     hook.Add("TTTPrepareRound", "MuteMic_TTTPrepareRound", function()
         TTT = "PrepareRound";
     end);
@@ -145,24 +127,27 @@ elseif (CLIENT) then
     hook.Add("TTTEndRound", "MuteMic_TTTEndRound", function (result)
         print("MuteMic: TTTEndRound");
         TTT = "EndRound";
-        applyState("SPEAK");
+        if enabled then
+            applyState("SPEAK");
+        end
     end);
     
-    hook.Add("PlayerSpawnAsSpectator", "MuteMic_PlayerSpawnAsSpectator", function (player)
-        print("MuteMic: PlayerSpawnAsSpectator", player);
-    end);
-
     net.Receive("MuteMicKilled", function()
         print("MuteMic: Got MuteMicKilled from server");
-        if (!enabled or TTT == "PrepareRound" or TTT == "EndRound" or TTT == "unknown") then
+        if (!enabled or spectator or TTT == "PrepareRound" or TTT == "EndRound" or TTT == "unknown") then
             return;
         end
         applyState("MUTE");
     end);
     
-    net.Receive("MuteMicSpectator", function()
-        print("MuteMic: Got MuteMicSpectator from server");
-        applyState("SPEAK");
+    cvars.AddChangeCallback( "ttt_spectator_mode", function(convar_name, value_old, value_new)
+        spectator = (value_new ~= "0");
+        if spectator then
+            print("MuteMic: Got spectator event");
+            if enabled then
+                applyState("SPEAK");
+            end
+        end
     end);
     
     concommand.Add("mutemic",
@@ -171,27 +156,31 @@ elseif (CLIENT) then
             print("Enabled:", enabled);
             print("Socket: ", socket);
             print("Connected: ", connected)
-            print("Server:", IP .. ":" .. PORT);
+            print("Server:", GetConVarString("mutemic_ip") .. ":" .. GetConVarNumber("mutemic_port"));
             print("State: ", state);
         elseif (args[1] == "mute") then
-            if !enabled then print("MuteMic is not enabled") end
             applyState("MUTE");
         elseif (args[1] == "unmute") then
-            if !enabled then print("MuteMic is not enabled") end
             applyState("SPEAK");
         elseif (args[1] == "enable") then
             enabled = true;
         elseif (args[1] == "disable") then
             applyState("SPEAK");
             enabled = false;
+        elseif (args[1] == "reconnect") then
+            pcall(function()
+                socket:Disconnect();
+                connect();
+            end);
         else
             print("Usage:");
-            print("  "..command.." [status|mute|unmute|enable|disable]");
+            print("  "..command.." [status|mute|unmute|enable|disable|reconnect]");
         end
     end,
     function (cmd, args)
         local tbl = {};
         table.insert(tbl, cmd.." status");
+        table.insert(tbl, cmd.." reconnect");
         if state == "SPEAK" then
             table.insert(tbl, cmd.." mute");
         else
@@ -205,5 +194,7 @@ elseif (CLIENT) then
         return tbl;
     end, "Return mutemic status or test its function. Valid arguments are: status, mute, unmute, enabled and disable") ;
 
+    CreateClientConVar("mutemic_ip", DEFAULT_IP, true, false)
+    CreateClientConVar("mutemic_port", DEFAULT_PORT, true, false)
     pcall(init);
 end
