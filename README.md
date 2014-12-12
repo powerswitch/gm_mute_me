@@ -8,7 +8,9 @@ Copy `server/mutemic.lua` to `<installation_directory>/garrysmod/lua/autorun/cli
 
 === Client ===
 
-Copy `client/gmcl_bromsock_linux.dll` and `client/gmcl_bromsock_win32.dll` to `<steam_dir>/SteamApps/common/GarrysMod/garrysmod/lua/bin/` and connect to a server supporting MuteMic.
+Install the Microsoft Visual C++ 2013 redistributable (32bit) package.
+
+Copy `client/gmcl_bromsock_linux.dll` and `client/gmcl_bromsock_win32.dll` to `<steam_dir>/SteamApps/common/GarrysMod/garrysmod/lua/bin/` and connect to a server supporting MuteMic. 
 
 You can configure MuteMic with the `mutemic` console command and the cvars `mutemic_ip` and `mutemic_port`.
 

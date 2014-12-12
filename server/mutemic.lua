@@ -171,6 +171,10 @@ elseif (CLIENT) then
             enabled = false;
         elseif (args[1] == "reconnect") then
             pcall(reconnect);
+        elseif (args[1] == "connect") then
+            connect();
+        elseif (args[1] == "disconnect") then
+            socket:Disconnect();
         else
             print("Usage:");
             print("  "..command.." [status|mute|unmute|enable|disable|reconnect]");
