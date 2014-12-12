@@ -1,0 +1,3 @@
+[submodule "gm_bromsock"]
+	path = gm_bromsock
+	url = https://github.com/Bromvlieg/gm_bromsock/
