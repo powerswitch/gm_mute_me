@@ -15,8 +15,10 @@ MyNetwork::MyNetwork(QObject *parent) :
 }
 
 void MyNetwork::start() {
-    while (!tcpServer->isListening() && !tcpServer->listen(LISTEN, PORT)) {
-        std::cout << "Failed to listen" << std::endl;
+    if (!tcpServer->isListening() && !tcpServer->listen(LISTEN, PORT))
+    {
+        qDebug("Failed to listen");
+        //std::cout << "Failed to listen" << std::endl;
         /*QMessageBox::StandardButton ret = QMessageBox::critical(this,
                                         tr("Loopback"),
                                         tr("Unable to start the test: %1.")
@@ -25,14 +27,13 @@ void MyNetwork::start() {
                                         | QMessageBox::Cancel);
         if (ret == QMessageBox::Cancel)
             return;*/
-        return;
     }
-
+  return;
 }
 
 void MyNetwork::acceptConnection()
 {
-    std::cout << "Got connection" << std::endl;
+    qDebug("Got connection");
     tcpServerConnection = tcpServer->nextPendingConnection();
     connect(tcpServerConnection, SIGNAL(readyRead()),
             this, SLOT(readFromClient()));
@@ -43,19 +44,20 @@ void MyNetwork::acceptConnection()
 
 void MyNetwork::readFromClient() {
     QByteArray data = tcpServerConnection->readLine(1024);
+    //QByteArray data = tcpServerConnection->readAll(); //MAYBE
     std::cout << "Data: '" << data.data() << "'" << std::endl;
     if (data.isEmpty())
         return;
 
     if (data.contains("SPEAK")) {
         emit gotUnmute();
-        std::cout << "Unmute" << std::endl;
+        qDebug("Unmute");
     }
     else if (data.contains("MUTE")) {
         emit gotMute();
-        std::cout << "Mute" << std::endl;
+        qDebug("Mute");
     }
     else {
-        std::cout << "Invalid Data" << std::endl;
+        qDebug("Invalid Data");
     }
 }
