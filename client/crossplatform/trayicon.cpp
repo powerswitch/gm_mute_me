@@ -14,7 +14,11 @@ TrayIcon::TrayIcon(QObject *parent) :
 
 QIcon &TrayIcon::getIcon() {
     //QIcon* icon = new QIcon("/usr/share/icons/hicolor/256x256/apps/cournal.png");
-    QIcon* icon = new QIcon("/home/flyser/Gmodlogo_5r.svg");
+#ifdef WIN32
+    QIcon* icon = new QIcon("logo_16x16.png");
+#else
+    QIcon* icon = new QIcon("logo.svg");
+#endif
     return *icon;
 }
 
