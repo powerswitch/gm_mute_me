@@ -18,7 +18,6 @@ void MyNetwork::start() {
     if (!tcpServer->isListening() && !tcpServer->listen(LISTEN, PORT))
     {
         qDebug("Failed to listen");
-        //std::cout << "Failed to listen" << std::endl;
         /*QMessageBox::StandardButton ret = QMessageBox::critical(this,
                                         tr("Loopback"),
                                         tr("Unable to start the test: %1.")
@@ -28,7 +27,7 @@ void MyNetwork::start() {
         if (ret == QMessageBox::Cancel)
             return;*/
     }
-  return;
+    return;
 }
 
 void MyNetwork::acceptConnection()
@@ -37,9 +36,13 @@ void MyNetwork::acceptConnection()
     tcpServerConnection = tcpServer->nextPendingConnection();
     connect(tcpServerConnection, SIGNAL(readyRead()),
             this, SLOT(readFromClient()));
+
+    connect(tcpServerConnection, SIGNAL(readyRead()),
+            this, SLOT(readFromClient(num_connections)));
+    connect(tcpServerConnection, SIGNAL(disconnect()),
+            this, SLOT(clientDisconnect()));
     //connect(tcpServerConnection, SIGNAL(error(QAbstractSocket::SocketError)),
     //        this, SLOT(displayError(QAbstractSocket::SocketError)));
-    tcpServer->close();
 }
 
 void MyNetwork::readFromClient() {
@@ -60,4 +63,9 @@ void MyNetwork::readFromClient() {
     else {
         qDebug("Invalid Data");
     }
+}
+
+void MyNetwork::clientDisconnect() {
+    qDebug("Client disconnected");
+    emit gotUnmute();
 }

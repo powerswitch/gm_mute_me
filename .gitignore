@@ -1,3 +1,15 @@
 *~
 *.bak
 *.pro.user
+*.autosave
+
+# Python
+__pycache__
+*.pyc
+
+# Qt
+/client/crossplatform/Makefile*
+/client/build-*
+*.Debug
+*.Release
+*_plugin_import.cpp

@@ -26,3 +26,8 @@ HEADERS  += mainwindow.h \
     mynetwork.h
 
 FORMS    += mainwindow.ui
+
+RESOURCES += \
+    icons.qrc
+
+OTHER_FILES +=

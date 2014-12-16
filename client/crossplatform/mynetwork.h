@@ -24,6 +24,7 @@ private:
 private slots:
     void acceptConnection();
     void readFromClient();
+    void clientDisconnect();
 };
 
 #endif // MYNETWORK_H

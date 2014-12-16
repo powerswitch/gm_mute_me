@@ -15,9 +15,9 @@ TrayIcon::TrayIcon(QObject *parent) :
 QIcon &TrayIcon::getIcon() {
     //QIcon* icon = new QIcon("/usr/share/icons/hicolor/256x256/apps/cournal.png");
 #ifdef WIN32
-    QIcon* icon = new QIcon("logo_16x16.png");
+    QIcon* icon = new QIcon(":/icons/logo_16x16.png");
 #else
-    QIcon* icon = new QIcon("logo.svg");
+    QIcon* icon = new QIcon(":/icons/logo.svg");
 #endif
     return *icon;
 }
