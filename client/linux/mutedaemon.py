@@ -26,7 +26,10 @@ class MyTCPHandler(socketserver.StreamRequestHandler):
     def handle(self):
         # self.request is the TCP socket connected to the client
         while True:
-            self.data = self.rfile.readline().strip().decode("utf-8")
+            try:
+                self.data = self.rfile.readline().strip().decode("utf-8")
+            except: # KeyboardInterrupt and others
+                break
             if not self.data:
                 # Connection was closed
                 set_mute(False)
@@ -39,41 +42,50 @@ class MyTCPHandler(socketserver.StreamRequestHandler):
                 print("Got invalid data from {}:{}".format(self.client_address[0], self.data))
 
 def set_mute(mute):
+    rec = int(mute == False)
     if mute:
         print("Muting")
     else:
         print("Unmuting")
-    remove_list = []
-    for dev, mixer in mixers.items():
-        try:
-            mixer.setrec(int(mute == False))
-        except alsaaudio.ALSAAudioError as e:
-            print("Error: {} {}, ignoring.".format(dev, e))
-            #TODO handle that better, by:
-            #mixer.setvolume(mixer_levels[0], 0, "capture")
-            #mixer.setvolume(mixer_levels[0], 1, "capture")
-            remove_list.append(dev)
-    for i in remove_list:
-        mixers.pop(i)
+    for m in mixers.items(), check_for_new_mixers():
+        remove_list = []
+        for dev, mixer in m:
+            if mixer == None: continue
+            try:
+                mixer.setrec(rec)
+                # If the soundcard was hotplugged while this program was running,
+                # setrec fails silently. We try to reinitialize the mixer if that happens
+                if (rec == 0 and sum(mixer.getrec()) != 0) or (rec != 0 and sum(mixer.getrec()) == 0):
+                    remove_list.append(dev)
+            except alsaaudio.ALSAAudioError as e:
+                print("Warning: {} {}, removing device from list.".format(dev, e))
+                remove_list.append(dev)
+        for i in remove_list:
+            mixers.pop(i, None)
+
 
 def main():
-    global DEVICES, mixers
+    global mixers
+
     mixer_list = list_mixers()
     if mixer_list:
-        print("Available mutable microphones:")
+        print("Available muteable microphones:")
         for i in mixer_list: print("  {}".format(i))
     else:
-        print("No mutable microphones found, sorry.")
-    if DEVICES == "ALL":
-        DEVICES = mixer_list
-    for card, mixer in set(DEVICES) & set(mixer_list):
-        mixers[(card,mixer)] = alsaaudio.Mixer(cardindex=card, control=mixer)
-    if not mixers:
-        print("No microphones to mute. Please adjust the DEVICES variable.")
-        return False
-    print("Automatically muting and unmuting the following microphones:")
-    for dev in mixers.keys(): print("  {}".format(dev))
+        print("Warning: No muteable microphones found.")
         
+    list(check_for_new_mixers())
+    if DEVICES == "ALL":
+        print("More devices will be added as they are hotplugged.")
+    else:
+        print("Automatically muting and unmuting the following microphones:")
+        for dev in mixers.keys():
+            print("  {}".format(dev))
+        missing_mixers = set(DEVICES)-set(mixers.keys())
+        if missing_mixers:
+            print("Waiting for the following devices to be hotplugged:")
+            for missing_dev in missing_mixers:
+                print("  {}".format(missing_dev))
     
     print("Serving requests on {}:{}".format(LISTEN, PORT))
     server = socketserver.TCPServer((LISTEN, PORT), MyTCPHandler)
@@ -91,9 +103,29 @@ def list_mixers():
             mixer = alsaaudio.Mixer(control=mixername, cardindex=card)
             if "Capture Mute" not in mixer.switchcap():
                 continue
-            ret.append((card,mixername))
-    return ret
-        
+            yield (card,mixername)
+
+def check_for_new_mixers(verbose=False):
+    global mixers
+    devices = set(list_mixers()) - set(mixers.keys())
+    if DEVICES != "ALL":
+        devices = set(DEVICES) & devices
+    for device in devices:
+        try:
+            mixer = alsaaudio.Mixer(cardindex=device[0], control=device[1])
+        except:
+            continue
+        try:
+            mixer.getrec()
+            print("Adding new device: ", device)
+        except alsaaudio.ALSAAudioError as e:
+            print("Warning: {} {}, ignoring.".format(device, e))
+            #TODO handle that better, by:
+            #mixer.setvolume(mixer_levels[0], 0, "capture")
+            #mixer.setvolume(mixer_levels[0], 1, "capture")
+            mixer = None
+        mixers[device] = mixer
+        yield device, mixer
 
 def pulseaudio_does_not_work():
     import dbus
