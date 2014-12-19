@@ -4,14 +4,16 @@ import sys, os
 import alsaaudio
 import socketserver
 
-CARD = 0
-MIXER = "Capture"
-#LISTEN = "127.0.0.1"
-LISTEN = "0.0.0.0"
+# Mute/Unmute all microphones
+DEVICES = "ALL"
+# Or specify the exact names:
+#DEVICES = [(0, "Capture"), (1, "Mic")]
+
+LISTEN = "127.0.0.1"
+#LISTEN = "0.0.0.0"
 PORT = 8264
 
-mixer = None
-mixer_levels = None
+mixers = {}
 
 class MyTCPHandler(socketserver.StreamRequestHandler):
     """
@@ -26,39 +28,60 @@ class MyTCPHandler(socketserver.StreamRequestHandler):
         while True:
             self.data = self.rfile.readline().strip().decode("utf-8")
             if not self.data:
-                print("Unmuting")
-                mixer.setrec(1)
+                # Connection was closed
+                set_mute(False)
                 break
             if self.data == "SPEAK":
-                print("Unmuting")
-                mixer.setrec(1)
-                #mixer.setvolume(mixer_levels[1], 0, "capture")
-                #mixer.setvolume(mixer_levels[1], 1, "capture")
+                set_mute(False)
             elif self.data == "MUTE":
-                print("Muting")
-                mixer.setrec(0)
-                #mixer.setvolume(mixer_levels[0], 0, "capture")
-                #mixer.setvolume(mixer_levels[0], 1, "capture")
+                set_mute(True)
             else:
                 print("Got invalid data from {}:{}".format(self.client_address[0], self.data))
 
-def main():
-    global mixer, mixer_levels
-    mixers = list_mixers()
-    if (CARD, MIXER) not in mixers:
-        return false
-    mixer = alsaaudio.Mixer(control=MIXER, cardindex=CARD)
-    mixer_levels = mixer.getrange("capture")
-    mixer_levels = [0, 92]
+def set_mute(mute):
+    if mute:
+        print("Muting")
+    else:
+        print("Unmuting")
+    remove_list = []
+    for dev, mixer in mixers.items():
+        try:
+            mixer.setrec(int(mute == False))
+        except alsaaudio.ALSAAudioError as e:
+            print("Error: {} {}, ignoring.".format(dev, e))
+            #TODO handle that better, by:
+            #mixer.setvolume(mixer_levels[0], 0, "capture")
+            #mixer.setvolume(mixer_levels[0], 1, "capture")
+            remove_list.append(dev)
+    for i in remove_list:
+        mixers.pop(i)
 
+def main():
+    global DEVICES, mixers
+    mixer_list = list_mixers()
+    if mixer_list:
+        print("Available mutable microphones:")
+        for i in mixer_list: print("  {}".format(i))
+    else:
+        print("No mutable microphones found, sorry.")
+    if DEVICES == "ALL":
+        DEVICES = mixer_list
+    for card, mixer in set(DEVICES) & set(mixer_list):
+        mixers[(card,mixer)] = alsaaudio.Mixer(cardindex=card, control=mixer)
+    if not mixers:
+        print("No microphones to mute. Please adjust the DEVICES variable.")
+        return False
+    print("Automatically muting and unmuting the following microphones:")
+    for dev in mixers.keys(): print("  {}".format(dev))
+        
+    
     print("Serving requests on {}:{}".format(LISTEN, PORT))
     server = socketserver.TCPServer((LISTEN, PORT), MyTCPHandler)
     try:
         server.serve_forever()
     except:
         server.shutdown()
-        print("Unmuting")
-        mixer.setrec(1)
+        set_mute(False)
     
 def list_mixers():
     ret = []
