@@ -2,7 +2,10 @@
 
 import sys, os
 import alsaaudio
-import socketserver
+try:
+    import socketserver
+except:
+    import SocketServer as socketserver
 
 # Mute/Unmute all microphones
 DEVICES = "ALL"
