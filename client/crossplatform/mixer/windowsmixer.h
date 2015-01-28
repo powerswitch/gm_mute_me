@@ -1,18 +1,18 @@
 #ifndef WINDOWSMIXER_H
 #define WINDOWSMIXER_H
 
-#include "mixer.h"
+#include "basicmixer.h"
 #include <endpointvolume.h>
 
-class WindowsMixer : public Mixer
+class Mixer : public BasicMixer
 {
 private:
     IAudioEndpointVolume *g_pEndptVol;
     GUID g_guidMyContext;
 
 public:
-    WindowsMixer();
-    ~WindowsMixer();
+    Mixer();
+    ~Mixer();
 
 public slots:
     bool mute();

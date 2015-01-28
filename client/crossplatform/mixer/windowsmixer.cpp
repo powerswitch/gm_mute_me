@@ -3,7 +3,7 @@
 #include <mmdeviceapi.h>
 #include <endpointvolume.h>
 
-WindowsMixer::WindowsMixer()
+Mixer::Mixer()
 {
     HRESULT hr;
     IMMDeviceEnumerator *pEnumerator;
@@ -71,7 +71,7 @@ WindowsMixer::WindowsMixer()
         throw 0;
 }
 
-bool WindowsMixer::mute() {
+bool Mixer::mute() {
     HRESULT hr = g_pEndptVol->SetMute(TRUE, &g_guidMyContext);
     if (FAILED(hr)) {
         MessageBox(NULL, TEXT("Could not unmute microphone."), TEXT("SetMute"), MB_OK & MB_ICONERROR);
@@ -80,7 +80,7 @@ bool WindowsMixer::mute() {
     return true;
 }
 
-bool WindowsMixer::unmute() {
+bool Mixer::unmute() {
     HRESULT hr = g_pEndptVol->SetMute(FALSE, &g_guidMyContext);
     if (FAILED(hr)) {
         MessageBox(NULL, TEXT("Could not unmute microphone."), TEXT("SetMute"), MB_OK & MB_ICONERROR);
@@ -89,6 +89,6 @@ bool WindowsMixer::unmute() {
     return true;
 }
 
-WindowsMixer::~WindowsMixer() {
+Mixer::~Mixer() {
     mute();
 }

@@ -14,15 +14,11 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    trayicon.cpp \
-    mixer.cpp \
-    mixer/windowsmixer.cpp \
+    basicmixer.cpp \
     mynetwork.cpp
 
 HEADERS  += mainwindow.h \
-    trayicon.h \
-    mixer.h \
-    mixer/windowsmixer.h \
+    basicmixer.h \
     mynetwork.h
 
 FORMS    += mainwindow.ui
@@ -31,3 +27,14 @@ RESOURCES += \
     icons.qrc
 
 OTHER_FILES +=
+
+
+win32 {
+    SOURCES += mixer/windowsmixer.cpp
+    HEADERS += mixer/windowsmixer.h
+}
+
+unix {
+    SOURCES += mixer/defaultmixer.cpp
+    HEADERS += mixer/defaultmixer.h
+}
