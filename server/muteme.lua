@@ -120,9 +120,9 @@ elseif (CLIENT) then
         elseif (!enabled) then
             RunConsoleCommand("say", "My MuteMe is disabled");
         elseif socket then
-            RunConsoleCommand("say", "My MuteMe is not connected.");
+            RunConsoleCommand("say", "My MuteMe Application is not running.");
         else
-            RunConsoleCommand("say", "MuteMe is not installed on my system");
+            RunConsoleCommand("say", "The MuteMe DLL files are not correctly installed.");
         end
     end);
     
