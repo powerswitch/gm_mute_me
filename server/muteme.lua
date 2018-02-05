@@ -19,7 +19,7 @@ elseif (CLIENT) then
 	local mutedPanel;
 	local TTT = "unknown";
 
-	local init, connect, reconnect, applyState, createMutedGui, writeline, callbackConnect, callbackDisconnect, ipPortChanged;
+	local init, connect, reconnect, applyState, createMutedGui, sendState, callbackConnect, callbackDisconnect, ipPortChanged;
 
 	print("MuteMe: Initializing ...");
 
@@ -38,22 +38,24 @@ elseif (CLIENT) then
 		socket:Connect(ip, port);
 	end;
 
-	reconnect = function()
+	disconnect = function()
+		print("MuteMe: Disconnecting ...");
 		socket:Disconnect();
+	end;
+
+	reconnect = function()
+		disconnect();
 		connect();
 	end;
 
-	applyState = function(newState)
-		if (newState ~= state) then
-			state = newState;
-			if (!mutedPanel) then
-				createMutedGui();
-			end
-			if (!writeline(state) or state == "SPEAK") then
-				mutedPanel:Hide()
-			else
-				mutedPanel:Show()
-			end
+	applyState = function(state)
+		if (!mutedPanel) then
+			createMutedGui();
+		end
+		if (!sendState(state) or state == "SPEAK") then
+			mutedPanel:Hide()
+		else
+			mutedPanel:Show()
 		end
 	end;
 
@@ -76,31 +78,30 @@ elseif (CLIENT) then
 		label:SetWrap(false);
 	end;
 
-	writeline = function(line)
+	sendState = function(msg)
 		if (not connected) then
 			pcall(connect);
 			return false;
 		end
 		local packet = BromPacket();
-		packet:WriteStringRaw(line .. "\n");
+		packet:WriteStringRaw(msg .. "\n");
 		socket:Send(packet, true);
-		print("MuteMe wrote: " .. line);
+		print("MuteMe sent packet: '" .. msg .. "'.");
 		return true;
 	end;
 
-	callbackConnect = function(sock, ret, ip, port)
-		connected = ret;
-		if (not ret) then
-			print("Unable to connect to MuteMe server");
+	callbackConnect = function(sock, connected, ip, port)
+		if (not connected) then
+			print("ERROR: Unable to connect to MuteMe application");
 			return;
 		end
 
-		print("Connected to MuteMe Server");
-		writeline(state);
+		print("Connected to MuteMe application");
+		sendState(state);
 	end;
 
 	callbackDisconnect = function(sock)
-		print("MuteMe: server disconnected");
+		print("MuteMe application disconnected");
 		connected = false;
 	end;
 
@@ -152,50 +153,53 @@ elseif (CLIENT) then
 		end
 	end);
 
-	concommand.Add("muteme",
-	function (player, command, args, fullstring)
-		if (args[1] == "status" or args[1] == nil) then
-			print("Enabled:", enabled);
-			print("Socket: ", socket);
-			print("Connected: ", connected)
-			print("Server:", GetConVarString("muteme_ip") .. ":" .. GetConVarNumber("muteme_port"));
-			print("State: ", state);
-		elseif (args[1] == "mute") then
-			applyState("MUTE");
-		elseif (args[1] == "unmute") then
-			applyState("SPEAK");
-		elseif (args[1] == "enable") then
-			enabled = true;
-		elseif (args[1] == "disable") then
-			applyState("SPEAK");
-			enabled = false;
-		elseif (args[1] == "reconnect") then
-			pcall(reconnect);
-		elseif (args[1] == "connect") then
-			connect();
-		elseif (args[1] == "disconnect") then
-			socket:Disconnect();
-		else
-			print("Usage:");
-			print("  "..command.." [status|mute|unmute|enable|disable|reconnect]");
-		end
-	end,
-	function (cmd, args)
-		local tbl = {};
-		table.insert(tbl, cmd.." status");
-		table.insert(tbl, cmd.." reconnect");
-		if state == "SPEAK" then
-			table.insert(tbl, cmd.." mute");
-		else
-			table.insert(tbl, cmd.." unmute");
-		end
-		if enabled then
-			table.insert(tbl, cmd.." disable");
-		else
-			table.insert(tbl, cmd.." enable");
-		end
-		return tbl;
-	end, "Return muteme status or test its function. Valid arguments are: status, mute, unmute, enabled and disable") ;
+	concommand.Add(
+		"muteme",
+		function (player, command, args, fullstring)
+			if (args[1] == "status" or args[1] == nil) then
+				print("Enabled:", enabled);
+				print("Socket: ", socket);
+				print("Connected: ", connected)
+				print("Server:", GetConVarString("muteme_ip") .. ":" .. GetConVarNumber("muteme_port"));
+				print("State: ", state);
+			elseif (args[1] == "mute") then
+				applyState("MUTE");
+			elseif (args[1] == "unmute") then
+				applyState("SPEAK");
+			elseif (args[1] == "enable") then
+				enabled = true;
+			elseif (args[1] == "disable") then
+				applyState("SPEAK");
+				enabled = false;
+			elseif (args[1] == "reconnect") then
+				pcall(reconnect);
+			elseif (args[1] == "connect") then
+				connect();
+			elseif (args[1] == "disconnect") then
+				disconnect();
+			else
+				print("Usage:");
+				print("  "..command.." [status|mute|unmute|enable|disable|reconnect]");
+			end
+		end,
+		function (cmd, args)
+			local tbl = {};
+			table.insert(tbl, cmd.." status");
+			table.insert(tbl, cmd.." reconnect");
+			if state == "SPEAK" then
+				table.insert(tbl, cmd.." mute");
+			else
+				table.insert(tbl, cmd.." unmute");
+			end
+			if enabled then
+				table.insert(tbl, cmd.." disable");
+			else
+				table.insert(tbl, cmd.." enable");
+			end
+			return tbl;
+		end,
+		"Return muteme status or test its function. Valid arguments are: status, mute, unmute, enabled and disable"
+	);
 
 	CreateClientConVar("muteme_ip", DEFAULT_IP, true, false)
 	CreateClientConVar("muteme_port", DEFAULT_PORT, true, false)

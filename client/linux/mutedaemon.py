@@ -12,8 +12,8 @@ DEVICES = "ALL"
 # Or specify the exact names:
 #DEVICES = [(0, "Capture"), (1, "Mic")]
 
-LISTEN = "127.0.0.1"
-#LISTEN = "0.0.0.0"
+#LISTEN = "127.0.0.1"
+LISTEN = "0.0.0.0"
 PORT = 8264
 
 mixers = {}
