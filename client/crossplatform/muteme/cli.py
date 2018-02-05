@@ -13,11 +13,14 @@ from muteme.mixer import Mixer
 LISTEN = "0.0.0.0"
 PORT = 8264
 
+mixer = None
+
 def main():
     logging.basicConfig(level=logging.DEBUG)
-    global mixer
-    mixer = Mixer()
+    setup_mixer()
+    run_tcp_server()
 
+def run_tcp_server():
     info("Serving requests on %s:%d", LISTEN, PORT)
     server = MyTCPServer((LISTEN, PORT), MyTCPHandler)
     try:
@@ -27,6 +30,10 @@ def main():
     finally:
         server.server_close()
         mixer.mute(False)
+
+def setup_mixer():
+    global mixer
+    mixer = Mixer()
 
 class MyTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
