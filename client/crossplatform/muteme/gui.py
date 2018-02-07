@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QApplication, QCheckBox, QSystemTrayIcon, \
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QObject, QThread, pyqtSlot
 
-from muteme import gui_icons as icons
+import muteme.icons_rc
 import muteme.cli
 
 class TcpServer(QObject):

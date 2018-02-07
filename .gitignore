@@ -2,14 +2,11 @@
 *.bak
 *.pro.user
 *.autosave
+*.kate-swp
 
 # Python
 __pycache__
 *.pyc
 
 # Qt
-/client/crossplatform/Makefile*
-/client/build-*
-*.Debug
-*.Release
-*_plugin_import.cpp
+*_rc.py

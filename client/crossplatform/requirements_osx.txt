@@ -1,0 +1,2 @@
+PyQt5
+humanfriendly  # optional. only useful for development
