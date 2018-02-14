@@ -69,7 +69,7 @@ class TrayIcon(QSystemTrayIcon):
             if event.mute:
                 self.on_mute()
             else:
-                self.un_unmute()
+                self.on_unmute()
 
     @pyqtSlot(bool)
     def on_quit(self):
