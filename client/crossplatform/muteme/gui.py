@@ -1,23 +1,37 @@
 #!/usr/bin/env python3
 
-from PyQt5.QtWidgets import QApplication, QCheckBox, QSystemTrayIcon, \
-    QMenu, QAction, qApp
+import threading
+
+from PyQt5.QtCore import pyqtSlot, QEvent
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QObject, QThread, pyqtSlot
+from PyQt5.QtWidgets import (
+    QApplication,
+    QSystemTrayIcon,
+    QMenu,
+    QAction,
+    qApp)
 
 import muteme.icons_rc
-import muteme.cli
+from muteme.network import AsyncTcpServer
+import muteme.mixer
 
-class TcpServer(QObject):
-    def __init__(self, *args, **kwargs):
+app = None
+
+
+class MuteEvent(QEvent):
+    EVENT_TYPE = QEvent.Type(QEvent.registerEventType())
+
+    def __init__(self, mute):
+        super().__init__(self.EVENT_TYPE)
+        self.mute = mute
+
+class NetworkThread(threading.Thread):
+    def __init__(self, mute_callback, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        muteme.cli.setup_mixer()
+        self.tcp_server = AsyncTcpServer(mute_callback)
 
-    #mute_event = QtCore.pyqtSignal(bool)
-
-    @pyqtSlot()
-    def serve(self):
-        muteme.cli.run_tcp_server()
+    def run(self):
+        self.tcp_server.run_standalone()
 
 
 class TrayIcon(QSystemTrayIcon):
@@ -26,43 +40,63 @@ class TrayIcon(QSystemTrayIcon):
         self.setIcon(QIcon(":/icons/logo_256x256.png"))
 
         quit_action = QAction("Exit", self)
-        #show_action = QAction("Show", self)
-        #hide_action = QAction("Hide", self)
+        self.mute_action = QAction("Mute microphone", self)
+        self.unmute_action = QAction("Unmute microphone", self)
+
         quit_action.triggered.connect(self.on_quit)
-        #show_action.triggered.connect(self.show)
-        #hide_action.triggered.connect(self.hide)
+        self.mute_action.triggered.connect(self.on_mute)
+        self.unmute_action.triggered.connect(self.on_unmute)
+        self.unmute_action.setVisible(False)  #TODO: Actually determine mute state
 
         tray_menu = QMenu()
+        tray_menu.addAction(self.mute_action)
+        tray_menu.addAction(self.unmute_action)
         tray_menu.addAction(quit_action)
-        #tray_menu.addAction(show_action)
-        #tray_menu.addAction(hide_action)
         self.setContextMenu(tray_menu)
 
+        self.mixer = muteme.mixer.Mixer()
         self.setup_tcp_server()
 
     def setup_tcp_server(self):
-        self.tcp_server = TcpServer()
-        self.network_thread = QThread(self)
-        #self.tcp_server.mute_event.connect(self.on_mute_event)
-        self.tcp_server.moveToThread(self.network_thread)
-        self.network_thread.started.connect(self.tcp_server.serve)
-        self.network_thread.start()
+        self.thread = NetworkThread(self.mute_callback)
+        self.thread.start()
+
+    def mute_callback(self, mute):
+        QApplication.postEvent(self, MuteEvent(mute))
+
+    def customEvent(self, event):
+        if isinstance(event, MuteEvent):
+            if event.mute:
+                self.on_mute()
+            else:
+                self.un_unmute()
 
     @pyqtSlot(bool)
     def on_quit(self):
-        self.network_thread.quit() # does not work
+        self.thread.tcp_server.event_loop.call_soon_threadsafe(self.thread.tcp_server.event_loop.stop)
+        self.thread.join()
+        self.mixer.mute(False)
         qApp.quit()
 
-    #@pyqtSlot(bool)
-    #def on_mute_event(self, val):
-        #self.mixer.mute(val)
+    @pyqtSlot(bool)
+    def on_mute(self):
+        self.unmute_action.setVisible(True)
+        self.mute_action.setVisible(False)
+        self.mixer.mute(True)
+
+    @pyqtSlot(bool)
+    def on_unmute(self):
+        self.unmute_action.setVisible(False)
+        self.mute_action.setVisible(True)
+        self.mixer.mute(False)
+
+
 
 def main():
     global app # see http://pyqt.sourceforge.net/Docs/PyQt5/gotchas.html
     app = QApplication(sys.argv)
     mw = TrayIcon()
     mw.show()
-
     return app.exec()
 
 
